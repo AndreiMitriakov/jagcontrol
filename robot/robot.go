@@ -1,26 +1,24 @@
 package robot
 
-import (
-	"net"
-)
-
 type Robot struct {
-	conn net.Conn
-	state State
+	robInterface robotInterface
+	robState State
 }
 
-func (p *Robot) init(prms ...int32){
-	conn, err := net.Dial("tcp", "golang.org:80")
-	if err != nil {
-		panic("No connection to robot!")
-	}
-	p.state = State{front: prms[0], rear: prms[1], linear: prms[2], angular: prms[3], arm1: prms[4], arm2: prms[5]}
-	p.conn = conn
+func (r *Robot) Init(prms ...int32){
+	r.robInterface = robotInterface{}
+	r.robInterface.init()
+	r.robState = State{}
+	r.robState.init(prms)
 }
+
+func (r *Robot) Str() string {
+	return "Ok"
+}
+
 
 
 /*
-
 void MainWindow::wheelCmdSend(int cmdValue1,int cmdValue2)
 {
 	QString strCmd;
