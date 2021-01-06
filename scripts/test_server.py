@@ -19,17 +19,19 @@ class Server (threading.Thread):
         while True:
             conn, addr = self.s.accept()
             with conn:
-                conn.settimeout(1.0)
+                # conn.settimeout(1.0)
                 print('conn:', addr)
                 try:
                     while True:
                         print('wait')
                         data = conn.recv(1024).decode("utf-8")
                         if not data:
+                            print("nodt")
                             break
-                        print('recv:', data)
+                        print('recv:\n', data)
                 except Exception as e:
                     print('tout')
+                print("clos")
         self.s.close()
         self.s = None
 

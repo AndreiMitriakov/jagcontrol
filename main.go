@@ -5,9 +5,11 @@ import (
 )
 
 func main(){
-	r := robot.Robot{}
-	r.Init(0, 0, 0, 0, 0, 0)
-
-	r.Operate()
-
+	jaguar := robot.Robot{}
+	jaguar.Init(0., 0., 0., 0., 0., 0.)
+	defer jaguar.Close()
+	done := make(chan bool)
+	go jaguar.Keyboard(done)
+	go jaguar.RPC()
+	<-done
 }
