@@ -28,7 +28,7 @@ type State struct {
 	limits map[string]map[string]float32
 }
 
-func (s *State) init(prms []int32) {
+func (s *State) init(prms []float32) {
 	// 1140 counts per revolution
 	s.linear, s.angular, s.front, s.rear, s.arm1, s.arm2 = prms[0], prms[1], prms[2], prms[3], prms[4], prms[5]
 	s.limits["linear"]["min"] = -0.4

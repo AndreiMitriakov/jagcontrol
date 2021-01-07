@@ -7,7 +7,6 @@ import (
 func main(){
 	r := robot.Robot{}
 	r.Init(0, 0, 0, 0, 0, 0)
-
 	r.Operate()
 
 }
