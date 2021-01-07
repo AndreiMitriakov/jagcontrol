@@ -69,10 +69,7 @@ func (p *robotInterface) readCurrent() {}
 
 func (p *robotInterface) writeVel(left, right int32) {
 	var cmd string = "MMW !M " + strconv.Itoa(int(left)) + " " + strconv.Itoa(int(right)) + "\r\n"
-	_, err := p.connectionBase.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write velocity.")
-	}
+	p.writeToBaseBoard(cmd)
 	// fmt.Println("Written %d bytes %s", n)
 }
 
@@ -82,28 +79,16 @@ func (p *robotInterface) writeFlip(fr, rr int32) {
 	// "MM2 !PR 1 " + QString::number(leftFrontCmd) + "\r\n"
 	// "MM2 !PR 2 " + QString::number(rightFrontCmd) + "\r\n";
 	cmd = "MM2 !PR 1 " + strconv.Itoa(int(fr)) + "\r\n"
-	_, err := p.connectionBase.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write left front flipper action")
-	}
+	p.writeToBaseBoard(cmd)
 	cmd = "MM2 !PR 2 " + strconv.Itoa(int(fr)) + "\r\n"
-	_, err = p.connectionBase.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write right front flipper action")
-	}
+	p.writeToBaseBoard(cmd)
 	// rear
 	// "MM3 !PR 1 " + QString::number(leftRearCmd) + "\r\n";
 	// "MM3 !PR 2 " + QString::number(rightRearCmd) + "\r\n"
 	cmd = "MM3 !PR 1 " + strconv.Itoa(int(rr)) + "\r\n"
-	_, err = p.connectionBase.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write left rear flipper action")
-	}
+	p.writeToBaseBoard(cmd)
 	cmd = "MM3 !PR 2 " + strconv.Itoa(int(rr)) + "\r\n"
-	_, err = p.connectionBase.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write right rear flipper action")
-	}
+	p.writeToBaseBoard(cmd)
 }
 
 func (p *robotInterface) writeArm(arm1, arm2 int32) {
@@ -111,76 +96,35 @@ func (p *robotInterface) writeArm(arm1, arm2 int32) {
 	// '!PR 2 '+str(joint1)+'\r'
 	var cmd string
 	cmd = "!PR 1 " + strconv.Itoa(int(arm1)) + "\r"
-	_, err := p.connectionArm.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write an action to the first arm joint")
-	}
+	p.writeToArmBoard(cmd)
 	cmd = "!PR 2 " + strconv.Itoa(int(arm2)) + "\r"
-	_, err = p.connectionArm.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write an action to the second arm joint")
-	}
+	p.writeToArmBoard(cmd)
 }
 
-/*
-void MainWindow::wheelCmdSend(int cmdValue1,int cmdValue2)
-{
-	QString strCmd;
-
-
-	if ((cmdValue1 < -1000) || (cmdValue2 < -1000))
-	{
-		strCmd = "MMW !EX\r\n";
-	}
-	else if((cmdValue1 > 1000) || (cmdValue2 > 1000))
-	{
-		strCmd = "MMW !MG\r\n";
-	}
-	else
-	{
-		strCmd = "MMW !M " + QString::number(cmdValue1) + " " + QString::number(cmdValue2) + "\r\n";
-	}
-
-	if (tcpRobot != NULL){
-		if (tcpRobot->isWritable())
-		{
-		    tcpRobot->write(strCmd.toUtf8().constData());
-		}
-	}
+func (p *robotInterface) stopMotors() {
+	stopBase := "MMW !EX\r\n"
+	p.writeToBaseBoard(stopBase)
+	stopFF := "MM2 !EX\r\n"
+	p.writeToBaseBoard(stopFF)
+	stopRF := "MM3 !EX\r\n"
+	p.writeToBaseBoard(stopRF)
 }
-void MainWindow::flipCmdSend (int leftFrontCmd,int rightFrontCmd,int leftRearCmd,int rightRearCmd)
-{
-	QString strCmd;
-	strCmd = "MM2 !PR 1 " + QString::number(leftFrontCmd) + "\r\n";
-	if (tcpRobot != NULL){
-		if (tcpRobot->isWritable())
-		{
-		    tcpRobot->write(strCmd.toUtf8().constData());
-		}
-	}
 
-	strCmd = "MM2 !PR 2 " + QString::number(rightFrontCmd) + "\r\n";
-	if (tcpRobot != NULL){
-		if (tcpRobot->isWritable())
-		{
-		    tcpRobot->write(strCmd.toUtf8().constData());
-		}
-	}
-
-	strCmd = "MM3 !PR 1 " + QString::number(leftRearCmd) + "\r\n";
-	if (tcpRobot != NULL){
-		if (tcpRobot->isWritable())
-		{
-		    tcpRobot->write(strCmd.toUtf8().constData());
-		}
-	}
-
-	strCmd = "MM3 !PR 2 " + QString::number(rightRearCmd) + "\r\n";
-	if (tcpRobot != NULL){
-		if (tcpRobot->isWritable())
-		{
-		    tcpRobot->write(strCmd.toUtf8().constData());
-		}
-	}
+func (p *robotInterface) releaseMotors() {
+	releaseBase := "MMW !MG\r\n"
+	p.writeToBaseBoard(releaseBase)
+	releaseFF := "MM2 !MG\r\n"
+	p.writeToBaseBoard(releaseFF)
+	releaseRR := "MM3 !EX\r\n"
+	p.writeToBaseBoard(releaseRR)
 }
-*/
+
+func (p *robotInterface) writeToBaseBoard(cmd string) {
+	_, err := p.connectionBase.Write([]byte(cmd))
+	failOnError(err, "")
+}
+
+func (p *robotInterface) writeToArmBoard(cmd string) {
+	_, err := p.connectionArm.Write([]byte(cmd))
+	failOnError(err, "")
+}

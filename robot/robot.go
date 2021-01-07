@@ -3,6 +3,7 @@ package robot
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 )
@@ -20,6 +21,7 @@ func (r *Robot) Init(test bool, prms ...float64){
 	r.robState.init(prms)
 	r.robRos = rosMiddleware{}
 	r.robRos.init()
+	r.stretch()
 }
 
 func (r *Robot) Close() {
@@ -82,6 +84,12 @@ func  (r *Robot) handleKeyPress(ch chan []byte, done chan<- bool) {
 		case 'j':
 			arm1, arm2 = r.robState.incArm(0.0, -0.157)
 			r.robInterface.writeArm(arm1, arm2)
+		case 'b':
+			r.robInterface.releaseMotors()
+		case 'n':
+			r.robInterface.stopMotors()
+		case 'o':
+			r.stretch()
 		case 'p':
 			r.robInterface.close()
 			exec.Command("stty", "-F", "/dev/tty", "echo").Run()
@@ -89,6 +97,8 @@ func  (r *Robot) handleKeyPress(ch chan []byte, done chan<- bool) {
 			fmt.Println(msg)
 			done <- true
 		}
+		state := r.robState.getState()
+		r.saveState(state)
 		r.updateScreen(msg)
 	}
 }
@@ -124,11 +134,13 @@ func (r *Robot) handleRPC(msg []byte, res chan []byte, done chan<- bool) {
 		}
 	}
 	state := r.robState.getState()
+	r.saveState(state)
 	jsonState, _ := json.Marshal(state)
 	res <- jsonState
 }
 
 func (r *Robot) RPC(done chan<- bool) {
+	r.robInterface.releaseMotors()
 	req := make(chan []byte)
 	res := make(chan []byte)
 	go r.robRos.consume(req, res)
@@ -138,7 +150,24 @@ func (r *Robot) RPC(done chan<- bool) {
 	}
 }
 
-func (r *Robot) Middleware() {
-
+func (r *Robot) saveState(state map[string]float64) {
+	delete(state, "linear")
+	delete(state, "angular")
+	jsonState, _ := json.Marshal(state)
+	_ = ioutil.WriteFile("state.json", jsonState, 0644)
 }
 
+func (r *Robot) stretch() {
+	// This method analyse the last saved state and stretchs its parts to the initial position
+	state := map[string]float64{}
+	jsonState, _ := ioutil.ReadFile("state.json")
+	_ = json.Unmarshal(jsonState, &state)
+	for k, v := range state {
+		state[k] = -v
+	}
+	fr, rr := r.robState.incFlipper(state["front"], state["rear"])
+	r.robInterface.writeFlip(fr, rr)
+	arm1, arm2 := r.robState.incArm(state["arm1"], state["arm2"])
+	r.robInterface.writeFlip(arm1, arm2)
+	r.saveState(r.robState.getState())
+}
