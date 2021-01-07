@@ -13,38 +13,38 @@ import (
 		v) validates, when we set values, if velocity, flipper and arm angles can be set.
 */
 
-const PI float32 = 3.14
+const PI float64 = 3.14
 const MAX = 400
 const AngArmRes = 5700.0 / (2 * PI)
 const AngFlipperRes = 1140.0 / (2 * PI)
 
 type State struct {
-	front float32
-	rear float32
-	linear float32
-	angular float32
-	arm1 float32
-	arm2 float32
-	limits map[string]map[string]float32
+	front float64
+	rear float64
+	linear float64
+	angular float64
+	arm1 float64
+	arm2 float64
+	limits map[string]map[string]float64
 }
 
-func (s *State) init(prms []float32) {
+func (s *State) init(prms []float64) {
 	s.linear, s.angular, s.front, s.rear, s.arm1, s.arm2 = prms[0], prms[1], prms[2], prms[3], prms[4], prms[5]
 
-	s.limits = map[string]map[string]float32{
-		"wLeft": map[string]float32{"min": -400, "max": 400},
-		"wRight": map[string]float32{"min": -400, "max": 400},
-		"front": map[string]float32{"min": -PI/4, "max": PI/4},
-		"rear": map[string]float32{"min": -PI/4, "max": PI/4},
-		"arm1": map[string]float32{"min": -PI/4, "max": PI/4},
-		"arm2": map[string]float32{"min": -PI/4, "max": PI/4},
+	s.limits = map[string]map[string]float64{
+		"wLeft": map[string]float64{"min": -400, "max": 400},
+		"wRight": map[string]float64{"min": -400, "max": 400},
+		"front": map[string]float64{"min": -PI/4, "max": PI/4},
+		"rear": map[string]float64{"min": -PI/4, "max": PI/4},
+		"arm1": map[string]float64{"min": -PI/4, "max": PI/4},
+		"arm2": map[string]float64{"min": -PI/4, "max": PI/4},
 	}
 }
 
-func (s *State) setVelocity(lin, ang float32) (int32, int32) {
+func (s *State) setVelocity(lin, ang float64) (int32, int32) {
 	// calculation of corresponding left and right motor commands
-	var wLeft, wRight float32
-	var D, R float32  = 0.6, 0.085
+	var wLeft, wRight float64
+	var D, R float64  = 0.6, 0.085
 	wLeft = (lin + ang * D / 2) / R / (2*PI) * MAX
 	wRight = (lin - ang * D / 2) / R / (2*PI) * MAX
 	// fmt.Println("req", lin, ang)
@@ -66,13 +66,13 @@ func (s *State) setVelocity(lin, ang float32) (int32, int32) {
 	return int32(wLeft), int32(wRight)
 }
 
-func (s *State) getVelocity() (float32, float32) {
+func (s *State) getVelocity() (float64, float64) {
 	return s.linear, s.angular
 }
 
-func (s *State) incFlipper(fD, rD float32) (int32, int32) {
+func (s *State) incFlipper(fD, rD float64) (int32, int32) {
 	var fStart, rStart = s.front, s.rear
-	var fChange, rChange float32
+	var fChange, rChange float64
 	if fStart + fD > s.limits["front"]["max"] {
 		s.front = s.limits["front"]["max"]
 	} else if fStart + fD < s.limits["front"]["min"] {
@@ -93,13 +93,13 @@ func (s *State) incFlipper(fD, rD float32) (int32, int32) {
 	return int32(fChange * AngFlipperRes), int32(rChange * AngFlipperRes)
 }
 
-func (s *State) getFlipper() (float32, float32) {
+func (s *State) getFlipper() (float64, float64) {
 	return s.front, s.rear
 }
 
-func (s *State) incArm(arm1D, arm2D float32) (int32, int32) {
+func (s *State) incArm(arm1D, arm2D float64) (int32, int32) {
 	var arm1Start, arm2Start = s.arm1, s.arm2
-	var arm1Change, arm2Change float32
+	var arm1Change, arm2Change float64
 	if arm1Start + arm1D > s.limits["arm1"]["max"] {
 		s.arm1 = s.limits["arm1"]["max"]
 	} else if arm1Start + arm1D < s.limits["arm1"]["min"] {
@@ -119,8 +119,23 @@ func (s *State) incArm(arm1D, arm2D float32) (int32, int32) {
 	return int32(arm1Change * AngArmRes), int32(arm2Change * AngArmRes)
 }
 
-func (s *State) getArm() (float32, float32) {
+func (s *State) getArm() (float64, float64) {
 	return s.arm1, s.arm2
+}
+
+func (s *State) getState() map[string]float64 {
+	lin, ang := s.getVelocity()
+	fr, rr := s.getFlipper()
+	arm1, arm2:=s.getArm()
+	state := map[string]float64{
+		"linear": lin,
+		"angular": ang,
+		"front": fr,
+		"rear": rr,
+		"arm1": arm1,
+		"arm2": arm2,
+	}
+	return state
 }
 
 func (s *State) StringRepr() string{

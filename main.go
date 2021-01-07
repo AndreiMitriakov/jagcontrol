@@ -1,15 +1,21 @@
 package main
 
 import (
+	"flag"
 	"github.com/AndreiMitriakov/jagcontrol/robot"
+	"log"
 )
 
 func main(){
+	boolTest := flag.Bool("test", false, "working in test mode?")
+	flag.Parse()
+	log.Printf("Working in real mode [%t]\n", !*boolTest)
+
 	jaguar := robot.Robot{}
-	jaguar.Init(0., 0., 0., 0., 0., 0.)
+	jaguar.Init(*boolTest, 0., 0., 0., 0., 0., 0.)
 	defer jaguar.Close()
 	done := make(chan bool)
 	go jaguar.Keyboard(done)
-	go jaguar.RPC()
+	go jaguar.RPC(done)
 	<-done
 }

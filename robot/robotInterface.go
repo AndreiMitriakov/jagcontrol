@@ -20,16 +20,24 @@ type robotInterface struct {
 	connectionArm net.Conn
 }
 
-func (p *robotInterface) init(){
+func (p *robotInterface) init(test bool){
 	// 192.168.0.60:10001 base
 	// 192.168.0.63:10001 arm
 	// connection to base
-	conn_base, err := net.Dial("tcp", "localhost:10001")
+	var addrBase, addrArm string
+	if test {
+		addrBase = "localhost:10001"
+		addrArm = "localhost:10002"
+	} else {
+		addrBase = "192.168.0.60:10001"
+		addrArm = "192.168.0.63:10001"
+	}
+	conn_base, err := net.Dial("tcp", addrBase)
 	if err != nil {
 		panic("No connection to the robot base!")
 	}
 	// connection to arm
-	conn_arm, err := net.Dial("tcp", "localhost:10002")
+	conn_arm, err := net.Dial("tcp", addrArm)
 	if err != nil {
 		panic("No connection to the robot arm!")
 	}

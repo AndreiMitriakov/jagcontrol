@@ -1,6 +1,7 @@
 package robot
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,17 +10,21 @@ import (
 type Robot struct {
 	robInterface robotInterface
 	robState State
+	robRos rosMiddleware
 }
 
-func (r *Robot) Init(prms ...float32){
+func (r *Robot) Init(test bool, prms ...float64){
 	r.robInterface = robotInterface{}
-	r.robInterface.init()
+	r.robInterface.init(test)
 	r.robState = State{}
 	r.robState.init(prms)
+	r.robRos = rosMiddleware{}
+	r.robRos.init()
 }
 
 func (r *Robot) Close() {
 	r.robInterface.close()
+	r.robRos.close()
 }
 
 func  (r *Robot) catchKeyboardEvent(ch chan []byte) {
@@ -98,8 +103,42 @@ func (r *Robot) Keyboard(done chan<- bool) {
 	go r.handleKeyPress(ch, done)
 }
 
-func (r *Robot) RPC() {
-	fmt.Println("RPC")
+func (r *Robot) handleRPC(msg []byte, res chan []byte, done chan<- bool) {
+	var request map[string]interface{}
+	json.Unmarshal(msg, &request)
+	if _, ok := request["linear"]; ok {
+		left, right := r.robState.setVelocity(request["linear"].(float64), request["angular"].(float64))
+		r.robInterface.writeVel(left, right)
+	}
+	if _, ok := request["front"]; ok {
+		fr, rr := r.robState.incFlipper(request["front"].(float64), request["rear"].(float64))
+		r.robInterface.writeFlip(fr, rr)
+	}
+	if _, ok := request["arm1"]; ok {
+		arm1, arm2 := r.robState.incArm(request["arm1"].(float64), request["arm2"].(float64))
+		r.robInterface.writeFlip(arm1, arm2)
+	}
+	if _, ok := request["cmd"]; ok {
+		if request["cmd"] == 0.0 {
+			done <- true
+		}
+	}
+	state := r.robState.getState()
+	jsonState, _ := json.Marshal(state)
+	res <- jsonState
 }
 
+func (r *Robot) RPC(done chan<- bool) {
+	req := make(chan []byte)
+	res := make(chan []byte)
+	go r.robRos.consume(req, res)
+	for {
+		msg := <-req
+		go r.handleRPC(msg, res, done)
+	}
+}
+
+func (r *Robot) Middleware() {
+
+}
 
