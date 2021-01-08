@@ -3,6 +3,7 @@ package robot
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 )
@@ -23,6 +24,7 @@ func (r *Robot) Init(test bool, prms ...float64){
 }
 
 func (r *Robot) Close() {
+	log.Println("Closing connections!")
 	r.robInterface.close()
 	r.robRos.close()
 }
@@ -36,7 +38,7 @@ func  (r *Robot) catchKeyboardEvent(ch chan []byte) {
 }
 
 func  (r *Robot) updateScreen(msg string){
-	fmt.Print("\033[H\033[2J")
+	//fmt.Print("\033[H\033[2J")
 	fmt.Print(r.robState.StringRepr())
 	fmt.Println(msg)
 }
@@ -49,14 +51,17 @@ func  (r *Robot) handleKeyPress(ch chan []byte, done chan<- bool) {
 		case 'z':
 			left, right = r.robState.setVelocity(r.robState.linear + 0.10676, r.robState.angular)
 			r.robInterface.writeVel(left, right)
+		case 'a':
+			left, right = r.robState.setVelocity(0.0, 0.0)
+			r.robInterface.writeVel(left, right)
 		case 's':
 			left, right = r.robState.setVelocity(r.robState.linear - 0.10676, r.robState.angular)
 			r.robInterface.writeVel(left, right)
 		case 'q':
-			left, right = r.robState.setVelocity(r.robState.linear, r.robState.angular + 0.10676)
+			left, right = r.robState.setVelocity(r.robState.linear, r.robState.angular - 0.10676)
 			r.robInterface.writeVel(left, right)
 		case 'd':
-			left, right = r.robState.setVelocity(r.robState.linear, r.robState.angular - 0.10676)
+			left, right = r.robState.setVelocity(r.robState.linear, r.robState.angular + 0.10676)
 			r.robInterface.writeVel(left, right)
 		case 'r':
 			fr, rr = r.robState.incFlipper(0.157, 0.0)
@@ -82,11 +87,10 @@ func  (r *Robot) handleKeyPress(ch chan []byte, done chan<- bool) {
 		case 'j':
 			arm1, arm2 = r.robState.incArm(0.0, -0.157)
 			r.robInterface.writeArm(arm1, arm2)
+		case 'x':
+			r.robInterface.release()
 		case 'p':
-			r.robInterface.close()
 			exec.Command("stty", "-F", "/dev/tty", "echo").Run()
-			msg = "Closing connection!"
-			fmt.Println(msg)
 			done <- true
 		}
 		r.updateScreen(msg)
@@ -107,6 +111,7 @@ func (r *Robot) handleRPC(msg []byte, res chan []byte, done chan<- bool) {
 	var request map[string]interface{}
 	json.Unmarshal(msg, &request)
 	if _, ok := request["linear"]; ok {
+		// -|angular| <- turn left
 		left, right := r.robState.setVelocity(request["linear"].(float64), request["angular"].(float64))
 		r.robInterface.writeVel(left, right)
 	}
@@ -128,6 +133,18 @@ func (r *Robot) handleRPC(msg []byte, res chan []byte, done chan<- bool) {
 	res <- jsonState
 }
 
+func (r *Robot) handleSensorData(sensorChan <-chan string) {
+	for dat := range sensorChan {
+		fmt.Println(dat)
+	}
+}
+
+func (r *Robot) Sensors() {
+	sensorData := make(chan string)
+	go r.robInterface.readSensors(sensorData)
+	go r.handleSensorData(sensorData)
+}
+
 func (r *Robot) RPC(done chan<- bool) {
 	req := make(chan []byte)
 	res := make(chan []byte)
@@ -137,6 +154,7 @@ func (r *Robot) RPC(done chan<- bool) {
 		go r.handleRPC(msg, res, done)
 	}
 }
+
 
 func (r *Robot) Middleware() {
 

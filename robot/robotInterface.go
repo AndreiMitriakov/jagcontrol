@@ -1,8 +1,12 @@
 package robot
 
 import (
+	"bufio"
+	"fmt"
 	"net"
 	"strconv"
+	"strings"
+	"time"
 )
 
 /*
@@ -43,6 +47,7 @@ func (p *robotInterface) init(test bool){
 	}
 	p.connectionBase = conn_base
 	p.connectionArm = conn_arm
+	go p.ping()
 }
 
 func (p *robotInterface) close() {
@@ -63,12 +68,9 @@ func (p *robotInterface) close() {
 	}
 }
 
-func (p *robotInterface) readBattery() {}
-
-func (p *robotInterface) readCurrent() {}
-
 func (p *robotInterface) writeVel(left, right int32) {
-	var cmd string = "MMW !M " + strconv.Itoa(int(left)) + " " + strconv.Itoa(int(right)) + "\r\n"
+	fmt.Println("write", left, right)
+	var cmd string = "MMW !M " + strconv.Itoa(int(-left)) + " " + strconv.Itoa(int(right)) + "\r\n"
 	_, err := p.connectionBase.Write([]byte(cmd))
 	if err != nil {
 		panic("Can not write velocity.")
@@ -77,6 +79,7 @@ func (p *robotInterface) writeVel(left, right int32) {
 }
 
 func (p *robotInterface) writeFlip(fr, rr int32) {
+	fmt.Println("Received flips", fr, rr)
 	var cmd string
 	// front
 	// "MM2 !PR 1 " + QString::number(leftFrontCmd) + "\r\n"
@@ -86,23 +89,11 @@ func (p *robotInterface) writeFlip(fr, rr int32) {
 	if err != nil {
 		panic("Can not write left front flipper action")
 	}
-	cmd = "MM2 !PR 2 " + strconv.Itoa(int(fr)) + "\r\n"
+	// rear
+	cmd = "MM2 !PR 2 " + strconv.Itoa(int(rr)) + "\r\n"
 	_, err = p.connectionBase.Write([]byte(cmd))
 	if err != nil {
 		panic("Can not write right front flipper action")
-	}
-	// rear
-	// "MM3 !PR 1 " + QString::number(leftRearCmd) + "\r\n";
-	// "MM3 !PR 2 " + QString::number(rightRearCmd) + "\r\n"
-	cmd = "MM3 !PR 1 " + strconv.Itoa(int(rr)) + "\r\n"
-	_, err = p.connectionBase.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write left rear flipper action")
-	}
-	cmd = "MM3 !PR 2 " + strconv.Itoa(int(rr)) + "\r\n"
-	_, err = p.connectionBase.Write([]byte(cmd))
-	if err != nil {
-		panic("Can not write right rear flipper action")
 	}
 }
 
@@ -119,6 +110,37 @@ func (p *robotInterface) writeArm(arm1, arm2 int32) {
 	_, err = p.connectionArm.Write([]byte(cmd))
 	if err != nil {
 		panic("Can not write an action to the second arm joint")
+	}
+}
+
+func (p *robotInterface) release() {
+	rb := "MMW !MG\r\n"
+	p.connectionBase.Write([]byte(rb))
+	ff := "MM2 !MG\r\n"
+	p.connectionBase.Write([]byte(ff))
+	rr := "MM3 !MG\r\n"
+	p.connectionBase.Write([]byte(rr))
+
+}
+
+func (p *robotInterface) readSensors(sensorChan chan<- string) {
+	reader := bufio.NewReader(p.connectionBase)
+	for {
+		ba, _, err := reader.ReadLine()
+		failOnError(err, "Can not read from the robot")
+		str := strings.Trim(string(ba), "[]")
+		sensorChan <- str
+	}
+}
+
+func (p *robotInterface) ping() {
+	ticker := time.NewTicker(200 * time.Millisecond)
+	cmd := "PING\r\n"
+	for {
+		select {
+		case <-ticker.C:
+			p.connectionBase.Write([]byte(cmd))
+		}
 	}
 }
 
