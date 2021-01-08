@@ -1,8 +1,12 @@
 package robot
 
 import (
+	"bufio"
+	"fmt"
 	"net"
 	"strconv"
+	"strings"
+	"time"
 )
 
 /*
@@ -43,6 +47,7 @@ func (p *robotInterface) init(test bool){
 	}
 	p.connectionBase = conn_base
 	p.connectionArm = conn_arm
+	go p.ping()
 }
 
 func (p *robotInterface) close() {
@@ -63,10 +68,6 @@ func (p *robotInterface) close() {
 	}
 }
 
-func (p *robotInterface) readBattery() {}
-
-func (p *robotInterface) readCurrent() {}
-
 func (p *robotInterface) writeVel(left, right int32) {
 	var cmd string = "MMW !M " + strconv.Itoa(int(left)) + " " + strconv.Itoa(int(right)) + "\r\n"
 	p.writeToBaseBoard(cmd)
@@ -74,6 +75,7 @@ func (p *robotInterface) writeVel(left, right int32) {
 }
 
 func (p *robotInterface) writeFlip(fr, rr int32) {
+	fmt.Println("Received flips", fr, rr)
 	var cmd string
 	// front
 	// "MM2 !PR 1 " + QString::number(leftFrontCmd) + "\r\n"
@@ -101,6 +103,7 @@ func (p *robotInterface) writeArm(arm1, arm2 int32) {
 	p.writeToArmBoard(cmd)
 }
 
+
 func (p *robotInterface) stopMotors() {
 	stopBase := "MMW !EX\r\n"
 	p.writeToBaseBoard(stopBase)
@@ -108,6 +111,64 @@ func (p *robotInterface) stopMotors() {
 	p.writeToBaseBoard(stopFF)
 	stopRF := "MM3 !EX\r\n"
 	p.writeToBaseBoard(stopRF)
+
+func (p *robotInterface) release() {
+	rb := "MMW !MG\r\n"
+	p.connectionBase.Write([]byte(rb))
+	ff := "MM2 !MG\r\n"
+	p.connectionBase.Write([]byte(ff))
+	rr := "MM3 !MG\r\n"
+	p.connectionBase.Write([]byte(rr))
+
+}
+
+func (p *robotInterface) readSensors(sensorChan chan<- string) {
+	reader := bufio.NewReader(p.connectionBase)
+	for {
+		ba, _, err := reader.ReadLine()
+		failOnError(err, "Can not read from the robot")
+		str := strings.Trim(string(ba), "[]")
+		sensorChan <- str
+	}
+}
+
+func (p *robotInterface) ping() {
+	ticker := time.NewTicker(200 * time.Millisecond)
+	cmd := "PING\r\n"
+	for {
+		select {
+		case <-ticker.C:
+			p.connectionBase.Write([]byte(cmd))
+		}
+	}
+}
+
+/*
+void MainWindow::wheelCmdSend(int cmdValue1,int cmdValue2)
+{
+	QString strCmd;
+
+
+	if ((cmdValue1 < -1000) || (cmdValue2 < -1000))
+	{
+		strCmd = "MMW !EX\r\n";
+	}
+	else if((cmdValue1 > 1000) || (cmdValue2 > 1000))
+	{
+		strCmd = "MMW !MG\r\n";
+	}
+	else
+	{
+		strCmd = "MMW !M " + QString::number(cmdValue1) + " " + QString::number(cmdValue2) + "\r\n";
+	}
+
+	if (tcpRobot != NULL){
+		if (tcpRobot->isWritable())
+		{
+		    tcpRobot->write(strCmd.toUtf8().constData());
+		}
+	}
+>>>>>>> b9ecc977b664b47396f1114bd40d8aeb2f0a8a8e
 }
 
 func (p *robotInterface) releaseMotors() {

@@ -17,5 +17,6 @@ func main(){
 	done := make(chan bool)
 	go jaguar.Keyboard(done)
 	go jaguar.RPC(done)
+	go jaguar.Sensors()
 	<-done
 }
