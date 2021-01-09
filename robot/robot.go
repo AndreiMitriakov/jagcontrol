@@ -3,11 +3,8 @@ package robot
 import (
 	"encoding/json"
 	"fmt"
-<<<<<<< HEAD
 	"io/ioutil"
-=======
 	"log"
->>>>>>> b9ecc977b664b47396f1114bd40d8aeb2f0a8a8e
 	"os"
 	"os/exec"
 )
@@ -98,8 +95,6 @@ func  (r *Robot) handleKeyPress(ch chan []byte, done chan<- bool) {
 			r.robInterface.stopMotors()
 		case 'o':
 			r.stretch()
-		case 'x':
-			r.robInterface.release()
 		case 'p':
 			exec.Command("stty", "-F", "/dev/tty", "echo").Run()
 			done <- true
@@ -175,13 +170,17 @@ func (r *Robot) saveState(state map[string]float64) {
 	delete(state, "angular")
 	jsonState, _ := json.Marshal(state)
 	_ = ioutil.WriteFile("state.json", jsonState, 0644)
-
+}
 
 func (r *Robot) stretch() {
 	// This method analyse the last saved state and stretchs its parts to the initial position
 	state := map[string]float64{}
 	jsonState, _ := ioutil.ReadFile("state.json")
 	_ = json.Unmarshal(jsonState, &state)
+	r.robState.front = state["front"]
+	r.robState.rear = state["rear"]
+	r.robState.arm1 = state["arm1"]
+	r.robState.arm2 = state["arm2"]
 	for k, v := range state {
 		state[k] = -v
 	}

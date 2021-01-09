@@ -16,7 +16,9 @@ import (
 const PI float64 = 3.14
 const MAX = 400
 const AngArmRes = 5700.0 / (2 * PI)
-const AngFlipperRes = 5700.0 / (2 * PI)
+// FLIPARM_CIRCLE_CNT  7600
+// MOTOR_CNT	300
+const AngFlipperRes = 7600.0 / (2 * PI)
 
 type Sensor struct {
 	frFlTemp float64 // front flipper temp

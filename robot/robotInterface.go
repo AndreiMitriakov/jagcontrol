@@ -2,7 +2,6 @@ package robot
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -12,7 +11,7 @@ import (
 /*
 	This package is mentioned to provide communication with the robot:
 		I maintain tcp/ip connection with the robot,
-		  transform sending data into a string protocol command,
+		  transform sending raw_data into a string protocol command,
 		  serialize command,
 		  send it.
 		II receive information about the robot base state.
@@ -69,28 +68,26 @@ func (p *robotInterface) close() {
 }
 
 func (p *robotInterface) writeVel(left, right int32) {
-	var cmd string = "MMW !M " + strconv.Itoa(int(left)) + " " + strconv.Itoa(int(right)) + "\r\n"
+	var cmd string = "MMW !M " + strconv.Itoa(int(-left)) + " " + strconv.Itoa(int(right)) + "\r\n"
 	p.writeToBaseBoard(cmd)
 	// fmt.Println("Written %d bytes %s", n)
 }
 
 func (p *robotInterface) writeFlip(fr, rr int32) {
-	fmt.Println("Received flips", fr, rr)
-	var cmd string
 	// front
 	// "MM2 !PR 1 " + QString::number(leftFrontCmd) + "\r\n"
 	// "MM2 !PR 2 " + QString::number(rightFrontCmd) + "\r\n";
-	cmd = "MM2 !PR 1 " + strconv.Itoa(int(fr)) + "\r\n"
+	var cmd = "MM2 !PR 1 " + strconv.Itoa(int(fr)) + "\r\n"
 	p.writeToBaseBoard(cmd)
-	cmd = "MM2 !PR 2 " + strconv.Itoa(int(fr)) + "\r\n"
+	cmd = "MM2 !PR 2 " + strconv.Itoa(int(rr)) + "\r\n"
 	p.writeToBaseBoard(cmd)
 	// rear
 	// "MM3 !PR 1 " + QString::number(leftRearCmd) + "\r\n";
 	// "MM3 !PR 2 " + QString::number(rightRearCmd) + "\r\n"
-	cmd = "MM3 !PR 1 " + strconv.Itoa(int(rr)) + "\r\n"
-	p.writeToBaseBoard(cmd)
-	cmd = "MM3 !PR 2 " + strconv.Itoa(int(rr)) + "\r\n"
-	p.writeToBaseBoard(cmd)
+	// cmd = "MM3 !PR 1 " + strconv.Itoa(int(rr)) + "\r\n"
+	// p.writeToBaseBoard(cmd)
+	// cmd = "MM3 !PR 2 " + strconv.Itoa(int(rr)) + "\r\n"
+	// p.writeToBaseBoard(cmd)
 }
 
 func (p *robotInterface) writeArm(arm1, arm2 int32) {
@@ -111,15 +108,6 @@ func (p *robotInterface) stopMotors() {
 	p.writeToBaseBoard(stopFF)
 	stopRF := "MM3 !EX\r\n"
 	p.writeToBaseBoard(stopRF)
-
-func (p *robotInterface) release() {
-	rb := "MMW !MG\r\n"
-	p.connectionBase.Write([]byte(rb))
-	ff := "MM2 !MG\r\n"
-	p.connectionBase.Write([]byte(ff))
-	rr := "MM3 !MG\r\n"
-	p.connectionBase.Write([]byte(rr))
-
 }
 
 func (p *robotInterface) readSensors(sensorChan chan<- string) {
@@ -143,33 +131,6 @@ func (p *robotInterface) ping() {
 	}
 }
 
-/*
-void MainWindow::wheelCmdSend(int cmdValue1,int cmdValue2)
-{
-	QString strCmd;
-
-
-	if ((cmdValue1 < -1000) || (cmdValue2 < -1000))
-	{
-		strCmd = "MMW !EX\r\n";
-	}
-	else if((cmdValue1 > 1000) || (cmdValue2 > 1000))
-	{
-		strCmd = "MMW !MG\r\n";
-	}
-	else
-	{
-		strCmd = "MMW !M " + QString::number(cmdValue1) + " " + QString::number(cmdValue2) + "\r\n";
-	}
-
-	if (tcpRobot != NULL){
-		if (tcpRobot->isWritable())
-		{
-		    tcpRobot->write(strCmd.toUtf8().constData());
-		}
-	}
->>>>>>> b9ecc977b664b47396f1114bd40d8aeb2f0a8a8e
-}
 
 func (p *robotInterface) releaseMotors() {
 	releaseBase := "MMW !MG\r\n"
