@@ -7,6 +7,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type Robot struct {
@@ -40,8 +43,18 @@ func  (r *Robot) catchKeyboardEvent(ch chan []byte) {
 }
 
 func  (r *Robot) updateScreen(msg string){
-	//fmt.Print("\033[H\033[2J")
+	fmt.Print("\033[H\033[2J")
 	fmt.Print(r.robState.StringRepr())
+	fmt.Println()
+	fmt.Print(r.robState.StateStringRepr())
+	fmt.Println()
+	fmt.Print("Z, S, Q, D to control the robot\n")
+	fmt.Print("A to stop the robot\n")
+	fmt.Print("B, N to release, block motors\n")
+	fmt.Print("O to take the initial position\n")
+	fmt.Print("R, F, T, G to move flippers\n")
+	fmt.Print("Y, H, U, J to move arm joints\n")
+	fmt.Print("P to close connection\n")
 	fmt.Println(msg)
 }
 
@@ -143,8 +156,48 @@ func (r *Robot) handleRPC(msg []byte, res chan []byte, done chan<- bool) {
 }
 
 func (r *Robot) handleSensorData(sensorChan <-chan string) {
-	for dat := range sensorChan {
-		fmt.Println(dat)
+	for line := range sensorChan {
+		if strings.HasPrefix(line, "#") {
+			strArray := strings.Split(line, ",")
+			r.robState.sensor.Yaw, _ = strconv.ParseFloat(strArray[2], 64)
+			r.robState.sensor.GyroX, _ = strconv.ParseFloat(strArray[4], 64)
+			r.robState.sensor.GyroY, _ = strconv.ParseFloat(strArray[5], 64)
+			r.robState.sensor.GyroZ, _ = strconv.ParseFloat(strArray[6], 64)
+			r.robState.sensor.AccelX, _ = strconv.ParseFloat(strArray[8], 64)
+			r.robState.sensor.AccelY, _ = strconv.ParseFloat(strArray[9], 64)
+			r.robState.sensor.AccelZ, _ = strconv.ParseFloat(strArray[10], 64)
+		} else if strings.HasPrefix(line, "MM") {
+			// V(motorBoard data) AI(motor temp) A(current) C(position data)
+			index := int32(line[2])
+			line = line[0:4]
+			if index == 2 && strings.HasPrefix(line, "V") {
+				voltageInt, _ := strconv.ParseInt(strings.Split(line[2:], ":")[1], 10, 64)
+				r.robState.sensor.Voltage = float64(voltageInt) / 10
+			}
+			if strings.HasPrefix(line, "C") {
+				posEncoders := strings.Split(line[2:], ":")
+				pos1, _ := strconv.ParseInt(posEncoders[0], 10, 64)
+				pos2, _ := strconv.ParseInt(posEncoders[0], 10, 64)
+				switch index {
+				case 0:
+					r.robState.sensor.LeftMotorCountsFront = pos1
+					r.robState.sensor.RightMotorCountsFront = pos2
+				case 1:
+					r.robState.sensor.LeftMotorCountsRear = pos1
+					r.robState.sensor.RightMotorCountsRear = pos2
+				case 2:
+					r.robState.sensor.FrontFlipperCounts = pos1
+					r.robState.sensor.RearFlipperCounts = pos2
+				}
+			}
+			if index == 2 && strings.HasPrefix(line, "A"){
+				currents := strings.Split(line[2:], ":")
+				currentFront, _ := strconv.ParseInt(currents[0], 10, 64)
+				currentRear, _ := strconv.ParseInt(currents[0], 10, 64)
+				r.robState.sensor.FrontFlipperCurrent = float64(currentFront) / 10
+				r.robState.sensor.FrontFlipperCurrent = float64(currentRear) / 10
+			}
+		}
 	}
 }
 
@@ -152,6 +205,14 @@ func (r *Robot) Sensors() {
 	sensorData := make(chan string)
 	go r.robInterface.readSensors(sensorData)
 	go r.handleSensorData(sensorData)
+
+	ticker := time.NewTicker(200 * time.Millisecond)
+	for {
+		select {
+		case <-ticker.C:
+			r.robRos.publishState(r.robState.getSensorJson())
+		}
+	}
 }
 
 func (r *Robot) RPC(done chan<- bool) {

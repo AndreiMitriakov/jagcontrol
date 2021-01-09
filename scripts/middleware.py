@@ -3,22 +3,18 @@
 
 import pika
 import uuid
+import time
 import rospy
+import _thread
 import json
 from std_msgs.msg import Float32MultiArray, MultiArrayLayout, MultiArrayDimension, Int32MultiArray
 from std_msgs.msg import String
 
-
-class RabbitConnection:
-    def send(self, msg):
-        print("Got it {}".format(msg))
-        return {"linear":1, "angular":2, "arm1":3, "arm2":4, "front":5, "rear":6}
-
-
-class RPCClient:
+class RabbitMQ:
     def __init__(self):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
         self.channel = self.connection.channel()
+        self.state_channel = self.connection.channel()
 
         result = self.channel.queue_declare(queue='', exclusive=True)
 
@@ -29,11 +25,25 @@ class RPCClient:
             on_message_callback=self.on_response,
             auto_ack=True
         )
+        state = self.state_channel.queue_declare(queue='robotState')
+        self.state_channel.basic_consume(
+            queue=state.method.queue,
+            on_message_callback=self.callback_robot_state,
+            auto_ack=True
+        )
         self.responses = {}
+        self.robot_state = None
+        _thread.start_new_thread(self.channel.start_consuming, ())
+        _thread.start_new_thread(self.state_channel.start_consuming, ())
+        # self.channel.start_consuming()
+        # self.state_channel.start_consuming()
 
     def on_response(self, ch, method, props, body):
         if props.correlation_id in self.responses.keys():
             self.responses[props.correlation_id] = body
+
+    def callback_robot_state(self, ch, method, props, body):
+        self.robot_state = body.decode("utf-8")
 
     def call(self, m):
         corr_id = str(uuid.uuid4())
@@ -56,14 +66,19 @@ class RPCClient:
 class Middleware:
     def __init__(self):
         rospy.init_node("middleware")
-        self.conn = RPCClient()
+        self.conn = RabbitMQ()
         rospy.Subscriber('/jaguar/arm_cmd', Float32MultiArray, self.handle_arm, queue_size=1)
         rospy.Subscriber('/cmd_array', Float32MultiArray, self.handle_array, queue_size=1)
         rospy.Subscriber('/robot/command', String, self.handle_cmd, queue_size=1)
         self.pub_state = rospy.Publisher('/robot/state', Float32MultiArray)
+        self.pub_sensor_state = rospy.Publisher('/robot/sensor_state', String)
         self.msg = Float32MultiArray()
         self.msg.layout.dim = [MultiArrayDimension(label="state", size=6, stride=6)]
-        rospy.spin()
+        t = time.time()
+        while True:
+            if time.time() - t > 0.2:
+                t = time.time()
+                self.pub_sensor_state.publish(String(data=self.conn.robot_state))
 
     def decorate_send(func):
         def inner(self, msg):

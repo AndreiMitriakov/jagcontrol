@@ -1,6 +1,7 @@
 package robot
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -21,27 +22,28 @@ const AngArmRes = 5700.0 / (2 * PI)
 const AngFlipperRes = 7600.0 / (2 * PI)
 
 type Sensor struct {
-	frFlTemp float64 // front flipper temp
-	rrFlTemp float64 // rear flipper temp
-	frFlCur float64  // front flipper current
-	rrFlCur float64 // rear flipper current
-	frMotCur float64 // front motor current
-	frMotTemp float64 // front motor temp
-	rrMotCur float64 // rear motor current
-	rrMotTemp float64 // rear motor temp
-	battVolt float64 // battery voltage
-	accelX float64
-	accelY float64
-	accelZ float64
-	gyroX float64
-	gyroY float64
-	gyroZ float64
-	orientX float64
-	orientY float64
-	orientZ float64
-	leftMotorCounts int64 // left side mean motor encoders counts
-	rightMotorCounts int64 // right side mean motor encoders counts
-	boardTemp float64 // board temperature
+	FrontFlipperCurrent   float64 `json:"frontFlipperCurrent"`
+	RearFlipperCurrent    float64 `json:"rearFlipperCurrent"`
+	Voltage               float64 `json:"voltage"`
+	AccelX                float64 `json:"accelX"`
+	AccelY                float64 `json:"accelY"`
+	AccelZ                float64 `json:"accelZ"`
+	GyroX                 float64 `json:"gyroX"`
+	GyroY                 float64 `json:"gyroY"`
+	GyroZ                 float64 `json:"gyroZ"`
+	Yaw                   float64 `json:"yaw"`
+	LeftMotorCountsFront  int64   `json:"leftMotorCountsFront"`
+	LeftMotorCountsRear   int64   `json:"leftMotorCountsRear"`
+	RightMotorCountsFront int64   `json:"rightMotorCountsFront"`
+	RightMotorCountsRear  int64   `json:"rightMotorCountsRear"`
+	FrontFlipperCounts    int64   `json:"frontFlipperCounts"`
+	RearFlipperCounts     int64   `json:"rearFlipperCounts"`
+}
+
+func (s *State) getSensorJson() string {
+	b, err := json.Marshal(&s.sensor)
+	failOnError(err, "can not create json")
+	return string(b)
 }
 
 type State struct {
@@ -51,12 +53,13 @@ type State struct {
 	angular float64
 	arm1 float64
 	arm2 float64
+	sensor Sensor
 	limits map[string]map[string]float64
 }
 
 func (s *State) init(prms []float64) {
 	s.linear, s.angular, s.front, s.rear, s.arm1, s.arm2 = prms[0], prms[1], prms[2], prms[3], prms[4], prms[5]
-
+	s.sensor = Sensor{}
 	s.limits = map[string]map[string]float64{
 		"wLeft": map[string]float64{"min": -400, "max": 400},
 		"wRight": map[string]float64{"min": -400, "max": 400},
@@ -171,4 +174,11 @@ func (s *State) StringRepr() string{
 		"Vel: %f %f\n" +
 		"Flp: %f, %f\n" +
 		"Arm: %f %f\n", s.linear, s.angular, s.front, s.rear, s.arm1, s.arm2)
+}
+func (s *State) StateStringRepr() string{
+	return fmt.Sprintf(
+		"Sensor data:\n" +
+			"Voltage: %f\n" +
+			"Flipper current: %f, %f\n",
+			s.sensor.Voltage, s.sensor.FrontFlipperCurrent, s.sensor.RearFlipperCurrent)
 }

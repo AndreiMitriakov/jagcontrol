@@ -8,6 +8,8 @@ import (
 type rosMiddleware struct {
 	conn amqp.Connection
 	ch amqp.Channel
+	stateCh amqp.Channel
+	stateQueue amqp.Queue
 }
 
 func (m *rosMiddleware) init() {
@@ -19,6 +21,21 @@ func (m *rosMiddleware) init() {
 	failOnError(err, "Failed to open a channel")
 	m.ch = *ch
 	fmt.Println("Connection AMQP")
+
+
+	stateCh, err := conn.Channel()
+	failOnError(err, "Failed to open a channel")
+	m.stateCh = *stateCh
+	// State queue
+	m.stateQueue, err = m.stateCh.QueueDeclare(
+		"robotState", // name
+		false,   // durable
+		false,   // delete when unused
+		false,   // exclusive
+		false,   // no-wait
+		nil,     // arguments
+	)
+	failOnError(err, "Failed to declare the state queue")
 }
 
 func (m *rosMiddleware) consume(req, res chan []byte){
@@ -39,6 +56,19 @@ func (m *rosMiddleware) consume(req, res chan []byte){
 		failOnError(err, "Failed to publish a message")
 		d.Ack(false)
 	}
+}
+
+func (m *rosMiddleware) publishState(body string) {
+	err := m.stateCh.Publish(
+		"",     // exchange
+		m.stateQueue.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing {
+			ContentType: "text/plain",
+			Body:        []byte(body),
+		})
+	failOnError(err, "Failed to publish a message")
 }
 
 func (m *rosMiddleware) close() {

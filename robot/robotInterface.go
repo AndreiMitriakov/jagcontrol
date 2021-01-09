@@ -2,6 +2,7 @@ package robot
 
 import (
 	"bufio"
+	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -96,7 +97,7 @@ func (p *robotInterface) writeArm(arm1, arm2 int32) {
 	var cmd string
 	cmd = "!PR 1 " + strconv.Itoa(int(arm1)) + "\r"
 	p.writeToArmBoard(cmd)
-	cmd = "!PR 2 " + strconv.Itoa(int(arm2)) + "\r"
+	cmd = "!PR 2 " + strconv.Itoa(int(-arm2)) + "\r"
 	p.writeToArmBoard(cmd)
 }
 
@@ -114,9 +115,13 @@ func (p *robotInterface) readSensors(sensorChan chan<- string) {
 	reader := bufio.NewReader(p.connectionBase)
 	for {
 		ba, _, err := reader.ReadLine()
-		failOnError(err, "Can not read from the robot")
-		str := strings.Trim(string(ba), "[]")
-		sensorChan <- str
+		if err != nil {
+			str := strings.Trim(string(ba), "[]")
+			sensorChan <- str
+		} else {
+			log.Println("Can not read from the robot")
+		}
+
 	}
 }
 

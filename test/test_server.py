@@ -25,6 +25,7 @@ class Server (threading.Thread):
                     while True:
                         print('wait')
                         data = conn.recv(1024).decode("utf-8")
+                        conn.send("MM0 C=23:25:debugString".encode("utf-8"))
                         if not data:
                             print("nodt")
                             break
