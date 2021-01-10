@@ -21,7 +21,7 @@ This package provides CLI and ROS interface to control [Jaguar V4 with Manipulat
 ## Install  
 
 ```bash  
-go get github.com/AndreiMitriakov/jagcontrol  
+go get github.com/gwaxG/jagcontrol  
 ```
 
 ## Usage
