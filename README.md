@@ -1,5 +1,5 @@
 # Jaguar Control
-This package provides CLI and ROS interface to control [Jaguar V4 with Manipulator Arm Mobile Robotic Platform](http://jaguar.drrobot.com/specification_V4Arm.asp)
+This package provides command line and ROS interfaces to control [Jaguar V4 with Manipulator Arm Mobile Robotic Platform](http://jaguar.drrobot.com/specification_V4Arm.asp)
 
 ## Features
 * velocity and joints control with a keyboard
