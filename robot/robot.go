@@ -3,6 +3,7 @@ package robot
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/fatih/color"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,6 +17,7 @@ type Robot struct {
 	robInterface robotInterface
 	robState State
 	robRos rosMiddleware
+	events Events
 }
 
 func (r *Robot) Init(test bool, prms ...float64){
@@ -24,6 +26,7 @@ func (r *Robot) Init(test bool, prms ...float64){
 	r.robState = State{}
 	r.robState.init(prms)
 	r.robRos = rosMiddleware{}
+	r.events = Events{1.0, false, false}
 	r.robRos.init()
 	r.stretch()
 }
@@ -32,6 +35,7 @@ func (r *Robot) Close() {
 	log.Println("Closing connections!")
 	r.robInterface.close()
 	r.robRos.close()
+	r.stretch()
 }
 
 func  (r *Robot) catchKeyboardEvent(ch chan []byte) {
@@ -47,6 +51,18 @@ func  (r *Robot) updateScreen(msg string){
 	fmt.Print(r.robState.StringRepr())
 	fmt.Println()
 	fmt.Print(r.robState.StateStringRepr())
+	printVoltageBar(r.events.voltageRate)
+	fmt.Println()
+	if r.events.ffCurrentHigh || r.events.rrCurrentHigh {
+		color.Set(color.BlinkSlow, color.FgRed)
+		if r.events.ffCurrentHigh {
+			fmt.Print("High current in the FRONT flipper motor")
+		}
+		if  r.events.rrCurrentHigh {
+			fmt.Print("High current in the REAR flipper motor")
+		}
+		color.Unset()
+	}
 	fmt.Println()
 	fmt.Print("Z, S, Q, D to control the robot\n")
 	fmt.Print("A to stop the robot\n")
@@ -223,6 +239,25 @@ func (r *Robot) RPC(done chan<- bool) {
 	for {
 		msg := <-req
 		go r.handleRPC(msg, res, done)
+	}
+}
+func (r *Robot) Security() {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	for {
+		select {
+		case <-ticker.C:
+			r.events.voltageRate = int64(1.0 - (25.2 - r.robState.sensor.Voltage) / (25.2 - 18.0))*10
+			if r.robState.sensor.FrontFlipperCurrent / 25.0 > 0.8 {
+				r.events.ffCurrentHigh = true
+			} else {
+				r.events.ffCurrentHigh = false
+			}
+			if r.robState.sensor.RearFlipperCurrent / 25.0 > 0.8 {
+				r.events.rrCurrentHigh = true
+			} else {
+				r.events.rrCurrentHigh = false
+			}
+		}
 	}
 }
 

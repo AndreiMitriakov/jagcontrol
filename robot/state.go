@@ -178,7 +178,7 @@ func (s *State) StringRepr() string{
 func (s *State) StateStringRepr() string{
 	return fmt.Sprintf(
 		"Sensor data:\n" +
-			"Voltage: %f\n" +
-			"Flipper current: %f, %f\n",
-			s.sensor.Voltage, s.sensor.FrontFlipperCurrent, s.sensor.RearFlipperCurrent)
+			"Flipper current: %f, %f\n" +
+			"Voltage: %f\n" ,
+			s.sensor.FrontFlipperCurrent, s.sensor.RearFlipperCurrent, s.sensor.Voltage)
 }

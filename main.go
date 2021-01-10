@@ -18,5 +18,6 @@ func main(){
 	go jaguar.Keyboard(done)
 	go jaguar.RPC(done)
 	go jaguar.Sensors()
+	go jaguar.Security()
 	<-done
 }
