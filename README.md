@@ -14,14 +14,20 @@ This package provides CLI and ROS interface to control [Jaguar V4 with Manipulat
 ## Requirements  
 
 * [Go](https://golang.org/) >= 1.15  
+github.com/fatih/color v1.10.0  
+github.com/streadway/amqp v1.0.0  
 * [Python](https://www.python.org/) >= 3.8.5  
+[pika](https://pika.readthedocs.io/en/stable/) >= v0.9.1 
 * [ROS](https://www.ros.org/) Noetic/Melodic/Kinetic
 * [RabbitMQ](https://www.rabbitmq.com/) >= 3.6.10  
 
 ## Install  
 
 ```bash  
+pip install pika
 go get github.com/gwaxG/jagcontrol  
+cd $GOPATH/src/github.com/gwaxG/jagcontrol
+go get -d ./...
 ```
 
 ## Usage
