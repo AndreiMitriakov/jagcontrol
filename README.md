@@ -39,4 +39,4 @@ All data is published in String message in json format.
 ##### Subscribe
 * Close connection `/robot/command` <- String(0.0)
 * Arm change angles (rad) `/robot/cmd_arm` <- Float32MultiArray([arm1, arm2])
-* Set velocity (-1 ... 1), flipper change angles (rad) `/robot/cmd_array` <- Float32MultiArray(arm1, arm2)
+* Set velocity (-1 ... 1), flipper change angles (rad) `/robot/cmd_array` <- Float32MultiArray([linear, angular, front_flipper, rear_flipper])
